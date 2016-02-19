@@ -6,15 +6,10 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"time"
 )
 
-type Notification struct {
-	AppName string `json:"appName"`
-	Summary string `json:"summary"`
-	Body    string `json:"body"`
-}
-
-func Notify(n Notification) {
+func Notify(n *oshirase.Notify) {
 	bar := exec.Command("lemonbar")
 	stdin, err := bar.StdinPipe()
 
@@ -28,9 +23,12 @@ func Notify(n Notification) {
 	if err := bar.Start(); err != nil {
 		fmt.Println("An error occured: ", err)
 	}
-
-	io.WriteString(stdin, "notification\n")
-
+	io.WriteString(stdin, fmt.Sprintf("%%{F#ff0000}[%s]%%{F} %%{F#FF8C00}<%s>%%{F} %s\n", n.AppName, n.Summary, n.Body))
+	if n.ExpireTimeout < 0 {
+		n.ExpireTimeout = 2000
+	}
+	time.Sleep(time.Duration(n.ExpireTimeout) * time.Millisecond)
+	stdin.Close()
 }
 
 func main() {
@@ -41,12 +39,7 @@ func main() {
 	}
 
 	server.OnNotify(func(notification *oshirase.Notify) {
-		var n = Notification{
-			AppName: notification.AppName,
-			Summary: notification.Summary,
-			Body:    notification.Body,
-		}
-		Notify(n)
+		Notify(notification)
 	})
 	select {}
 }
